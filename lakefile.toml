@@ -1,0 +1,10 @@
+name = "nat-epi-bin"
+version = "0.1.0"
+defaultTargets = ["nat-epi-bin"]
+
+[[lean_lib]]
+name = "NatEpiBin"
+
+[[lean_exe]]
+name = "nat-epi-bin"
+root = "Main"
