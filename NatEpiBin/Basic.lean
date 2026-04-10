@@ -24,6 +24,7 @@ inductive Expr : Type
   | lambda : String -> Expr -> Expr
   | app : Expr -> Expr -> Expr
   | box : Agent -> Expr -> Expr
+  | letbox : Agent -> String -> Expr -> Expr -> Expr
 
 inductive TyTrue : Type
   | true : Expr -> Proposition -> TyTrue
@@ -57,6 +58,10 @@ inductive TypeCheck : (Pair Ctxt Ctxt) -> (Pair Expr Proposition) -> Prop
   | boxI :
       TypeCheck ⟨Gamma, Ctxt.ø⟩ ⟨e, A⟩
       -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.box a e, Proposition.Box a A⟩
+  | boxE :
+    TypeCheck ⟨Gamma, Delta⟩ ⟨e1, Proposition.Box a A⟩
+    -> TypeCheck ⟨Ctxt.extend Gamma ⟨Expr.var u, A⟩ , Delta⟩ ⟨e2, C⟩
+    -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.letbox a u e1 e2, C⟩
 
 
 -- simple proof of the identity function having type A -> A
