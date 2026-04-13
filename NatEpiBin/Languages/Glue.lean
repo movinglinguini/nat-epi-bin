@@ -23,7 +23,7 @@ inductive Proposition : Type 1
  | Atom : String -> Proposition
  | Lam : Proposition -> Proposition -> Proposition
  | Box : Agent -> Proposition -> Proposition
- | Ftype : Agent -> ForeignType -> Proposition
+ | Ftype {ForeignProps : Type} : Agent -> ForeignProps -> Proposition
 
 -- TODO: Extend typeclass that allows printing to string
 inductive Expr : Type 1
@@ -32,7 +32,7 @@ inductive Expr : Type 1
   | app : Expr -> Expr -> Expr
   | box : Agent -> Expr -> Expr
   | letbox : Agent -> String -> Expr -> Expr -> Expr
-  | fexpr : Agent -> ForeignExpression -> Expr
+  | fexpr {ForeignExpressions : Type} : Agent -> ForeignExpressions -> Expr
 
 inductive Judgment : Type 1
   | tytrue : Expr -> Proposition -> Judgment
@@ -46,30 +46,35 @@ inductive Lookup : Ctxt -> Judgment -> Type 1
   | here : Lookup (Ctxt.extend Gamma j) j
   | there : Lookup Gamma j -> Lookup (Ctxt.extend Gamma eB) j
 
-inductive CtxtMap (Judgments : FJudgment FExprs FTypes) : Ctxt -> Agent -> FCtxt Judgments -> Type 1
-  | empty : CtxtMap Judgments Ctxt.ø k FCtxt.ø
-  | keep : CtxtMap Judgments Gamma k Gamma'
-    -> CtxtMap Judgments (Ctxt.extend Gamma (Judgment.tyknows k e J)) k (FCtxt.extend Gamma' (Judgments.makeJudgment f τ))
-  | drop : CtxtMap Judgments Gamma k Gamma' -> ¬ (l = k)
-    -> CtxtMap Judgments (Ctxt.extend Gamma (Judgment.tyknows l e J)) k Gamma'
+inductive CtxtMap {ForeignCtxt : Type} : Ctxt -> Agent -> ForeignCtxt -> Type 1
+  | empty [fc : FCtxt FJs ForeignCtxt] : CtxtMap Ctxt.ø k fc.empty
+  | keep
+    [js : FJudgment Es Ts FJs]
+    [fc : FCtxt js ForeignCtxt]:
+    CtxtMap Gamma k Gamma'
+    -> CtxtMap
+        (Ctxt.extend Gamma (Judgment.tyknows k (Expr.fexpr k F) J))
+        k
+        (fc.extend Gamma' (js.makeJudgment F τ))
+  | drop
+    [js : FJudgment Es Ts FJs]
+    [fc : FCtxt js ForeignCtxt] :
+    CtxtMap Gamma k Gamma' -> l ≠ k ->
+    CtxtMap (Ctxt.extend Gamma (Judgment.tyknows l (Expr.fexpr l F) J)) k Gamma'
 
 -- Class that captures the notion of type-mapping
-class TypeMap (A : Proposition) (B : FType τ) where
-  typeMap : τ -> TypeMap A B
-  foreignType : τ
-
--- Example expressions
-private def exampleId : Expr :=
-  Expr.lambda "x" (Expr.var "x")
+class TypeMap (A : Type 1) (B : Type) where
+  typeMap : A -> B -> Type
 
 -- Type-checking judgment
-inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 1
+inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 2
   | hyp :
       Lookup Delta (Judgment.tytrue (Expr.var x) A)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) A)
-  | hypstar [typeMap : TypeMap A B] :
-      Lookup Delta (Judgment.tyknows k (Expr.var x) (Proposition.Ftype k B))
-      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) A)
+  | hypstar { C : Proposition } { τ : B } [typeMap : TypeMap Proposition B] :
+      typeMap.typeMap C τ
+      -> Lookup Delta (Judgment.tyknows k (Expr.var x) (Proposition.Ftype k τ))
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) C)
   | lambdaI :
       TypeCheck ⟨Gamma, Ctxt.extend Delta (Judgment.tytrue (Expr.var x) A)⟩ (Judgment.tytrue e B)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.lambda x e) (Proposition.Lam A B))
@@ -77,17 +82,11 @@ inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 1
       TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e1 (Proposition.Lam A B))
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e2 A)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.app e1 e2) B)
-  -- | boxI
-  --   [fJudgments : FJudgment FExprs FTypes]
-  --   (FGamma : FCtxt fJudgments)
-  --   [fTypeChecker : FTypeCheck TypeCheckProp fGamma]
-  --   [fExpr : FExpr f]
-  --   :
-  --     CtxtMap fJudgments Gamma k FGamma
-  --     -> TypeCheckProp
-  --     -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.box k (Expr.fexpr k f)) (Proposition.Box k (Proposition.Ftype k τ)))
-  | boxE :
-    TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e1 (Proposition.Box k (Proposition.Ftype k τ)))
-    -> TypeCheck ⟨Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) (Proposition.Ftype k τ)) , Delta⟩
-                  (Judgment.tytrue e2 C)
-    -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.letbox k u e1 e2) C)
+  -- | boxI { F : FExprs } { τ : FTypes }
+  --     [foreignJudgmentProp : FJudgment FExprs FTypes]
+  --     [foreignTypeChecker : FTypeCheck foreignJudgmentProp]
+  --     {foreignJudgment : foreignJudgmentProp.makeJudgment F τ}
+  --     {ForeignPhi : FCtxt foreignJudgmentProp}:
+  --     CtxtMap Gamma k ForeignPhi
+  --     -> foreignTypeChecker.typeCheck ForeignPhi foreignJudgment
+  --     -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.box k (Expr.fexpr k F)) (Proposition.Box k (Proposition.Ftype k τ)))
