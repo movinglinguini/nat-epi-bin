@@ -6,7 +6,6 @@
 -- In actuality, they should be elements of a
 -- universe of agents.
 import NatEpiBin.Entities.Pair
-import NatEpiBin.Entities.TypeCheck
 
 def Agent := String
 instance : DecidableEq Agent := inferInstanceAs (DecidableEq String)
@@ -52,56 +51,47 @@ private def exampleId : Expr :=
   Expr.lambda "x" (Expr.var "x")
 
 -- Type-checking judgment
-inductive TypeCheck : (Pair Ctxt Ctxt) -> (Pair Expr Proposition) -> Type
+inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type
   | hyp :
       Lookup Delta (Judgment.tytrue (Expr.var x) A)
-      -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.var x, A⟩
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) A)
+  | hypstar :
+      Lookup Gamma (Judgment.tyknows k (Expr.var x) A)
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) A)
   | lambdaI :
-      TypeCheck ⟨Gamma, Ctxt.extend Delta (Judgment.tytrue (Expr.var x) A)⟩ ⟨e, B⟩
-      -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.lambda x e, Proposition.Lam A B⟩
+      TypeCheck ⟨Gamma, Ctxt.extend Delta (Judgment.tytrue (Expr.var x) A)⟩ (Judgment.tytrue e B)
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.lambda x e) (Proposition.Lam A B))
   | lambdaE :
-      TypeCheck ⟨Gamma, Delta⟩ ⟨e1, Proposition.Lam A B⟩
-      -> TypeCheck ⟨Gamma, Delta⟩ ⟨e2, A⟩
-      -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.app e1 e2, B⟩
+      TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e1 (Proposition.Lam A B))
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e2 A)
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.app e1 e2) B)
   | boxI :
       KnowledgeRestriction Gamma k Gamma'
-      -> TypeCheck ⟨Gamma', Ctxt.ø⟩ ⟨e, A⟩
-      -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.box k e, Proposition.Box k A⟩
+      -> TypeCheck ⟨Gamma', Ctxt.ø⟩ (Judgment.tytrue e A)
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.box k e) (Proposition.Box k A))
   | boxE :
-    TypeCheck ⟨Gamma, Delta⟩ ⟨e1, Proposition.Box k A⟩
-    -> TypeCheck ⟨Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) A) , Delta⟩ ⟨e2, C⟩
-    -> TypeCheck ⟨Gamma, Delta⟩ ⟨Expr.letbox k u e1 e2, C⟩
+    TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e1 (Proposition.Box k A))
+    -> TypeCheck ⟨Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) A) , Delta⟩ (Judgment.tytrue e2 C)
+    -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.letbox k u e1 e2) C)
 
-def lookup? (ctxt : Ctxt) (eA : Judgment) : Option (Lookup ctxt eA) :=
-  match ctxt, eA with
-  | Ctxt.ø, _ => none
-  | Ctxt.extend Gamma (Judgment.tytrue (Expr.var x) A), (Judgment.tytrue (Expr.var y) B) =>
-    if eA == eB then
-      some (Lookup.here)
-    else
-      some
-
--- Algorithmically build a TypeCheck
-def typeCheck? (ctxts : Pair Ctxt Ctxt) (eA : Pair Expr Proposition) : Option (TypeCheck ctxts eA)
-  | ⟨Gamma, Delta⟩ ⟨Expr.var x, A⟩ =>
 
 -- simple proof of the identity function having type A -> A
--- private theorem exampleIdProof : TypeCheck ⟨Ctxt.ø, Ctxt.ø⟩ ⟨Expr.lambda "x" (Expr.var "x"), Proposition.Lam (Proposition.Atom "A") (Proposition.Atom "A")⟩ :=
---   TypeCheck.lambdaI (TypeCheck.hyp (Lookup.here))
+private def exampleIdProof : TypeCheck ⟨Ctxt.ø, Ctxt.ø⟩ (Judgment.tytrue (Expr.lambda "x" (Expr.var "x")) (Proposition.Lam (Proposition.Atom "A") (Proposition.Atom "A"))) :=
+  TypeCheck.lambdaI (TypeCheck.hyp (Lookup.here))
 
--- -- example knowledge restriction
--- private theorem exampleKnowledgeRestriction : KnowledgeRestriction
---   (Ctxt.extend
---     (Ctxt.extend
---       Ctxt.ø
---         (Judgment.tyknows "K" (Expr.var "x") (Proposition.Atom "A")))
---         (Judgment.tyknows "L" (Expr.var "x") (Proposition.Atom "A")))
---   "K"
---   (Ctxt.extend
---     Ctxt.ø
---       (Judgment.tyknows "K" (Expr.var "x") (Proposition.Atom "A")))
---   :=
---   KnowledgeRestriction.drop
---     (KnowledgeRestriction.keep
---       KnowledgeRestriction.base)
---     (by decide)
+-- example knowledge restriction
+private def exampleKnowledgeRestriction : KnowledgeRestriction
+  (Ctxt.extend
+    (Ctxt.extend
+      Ctxt.ø
+        (Judgment.tyknows "K" (Expr.var "x") (Proposition.Atom "A")))
+        (Judgment.tyknows "L" (Expr.var "x") (Proposition.Atom "A")))
+  "K"
+  (Ctxt.extend
+    Ctxt.ø
+      (Judgment.tyknows "K" (Expr.var "x") (Proposition.Atom "A")))
+  :=
+  KnowledgeRestriction.drop
+    (KnowledgeRestriction.keep
+      KnowledgeRestriction.base)
+    (by decide)

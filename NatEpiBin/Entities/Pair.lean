@@ -1,3 +1,3 @@
 structure Pair (A B : Type) where
-  (first : A)
-  (second : B)
+  (fst : A)
+  (snd : B)
