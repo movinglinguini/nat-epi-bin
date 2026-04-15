@@ -46,21 +46,21 @@ inductive Lookup : Ctxt -> Judgment -> Type 1
   | here : Lookup (Ctxt.extend Gamma j) j
   | there : Lookup Gamma j -> Lookup (Ctxt.extend Gamma eB) j
 
-inductive CtxtMap {ForeignCtxt : Type} : Ctxt -> Agent -> ForeignCtxt -> Type 1
-  | empty [fc : FCtxt FJs ForeignCtxt] : CtxtMap Ctxt.ø k fc.empty
-  | keep
-    [js : FJudgment Es Ts FJs]
-    [fc : FCtxt js ForeignCtxt]:
-    CtxtMap Gamma k Gamma'
+inductive CtxtMap
+    [es : FExpr Es]
+    [js : FJudgment es Ts FJs]
+    (fc : FCtxt js ForeignCtxt) : Ctxt -> Agent -> ForeignCtxt -> Type 1
+  | empty : CtxtMap fc Ctxt.ø k fc.empty
+  | keep :
+    CtxtMap fc Gamma k Gamma'
     -> CtxtMap
-        (Ctxt.extend Gamma (Judgment.tyknows k (Expr.fexpr k F) J))
+        fc
+        (Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) (Proposition.Ftype k τ)))
         k
-        (fc.extend Gamma' (js.makeJudgment F τ))
-  | drop
-    [js : FJudgment Es Ts FJs]
-    [fc : FCtxt js ForeignCtxt] :
-    CtxtMap Gamma k Gamma' -> l ≠ k ->
-    CtxtMap (Ctxt.extend Gamma (Judgment.tyknows l (Expr.fexpr l F) J)) k Gamma'
+        (fc.extend Gamma' (js.makeJudgment (es.var u) τ))
+  | drop :
+    CtxtMap fc Gamma k Gamma' -> l ≠ k ->
+    CtxtMap fc (Ctxt.extend Gamma (Judgment.tyknows l (Expr.var u) J)) k Gamma'
 
 -- Class that captures the notion of type-mapping
 class TypeMap (A : Type 1) (B : Type) where
@@ -82,11 +82,18 @@ inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 2
       TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e1 (Proposition.Lam A B))
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue e2 A)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.app e1 e2) B)
-  -- | boxI { F : FExprs } { τ : FTypes }
-  --     [foreignJudgmentProp : FJudgment FExprs FTypes]
-  --     [foreignTypeChecker : FTypeCheck foreignJudgmentProp]
-  --     {foreignJudgment : foreignJudgmentProp.makeJudgment F τ}
-  --     {ForeignPhi : FCtxt foreignJudgmentProp}:
-  --     CtxtMap Gamma k ForeignPhi
-  --     -> foreignTypeChecker.typeCheck ForeignPhi foreignJudgment
-  --     -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.box k (Expr.fexpr k F)) (Proposition.Box k (Proposition.Ftype k τ)))
+  | boxI
+    {TypeCheckProp : ForeignContext -> FJs -> Type }
+    {Gamma' : ForeignContext}
+    [fe : FExpr Es]
+    [js : FJudgment fe Ts FJs]
+    [fc : FCtxt js ForeignContext]
+    :
+    CtxtMap fc Gamma k Gamma'
+    -> TypeCheckProp Gamma' (js.makeJudgment F τ)
+    -> TypeCheck
+      ⟨Gamma, Delta⟩
+      (Judgment.tytrue
+        (Expr.box k (Expr.fexpr k F))
+        (Proposition.Box k (Proposition.Ftype k τ))
+      )
