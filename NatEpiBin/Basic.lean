@@ -13,9 +13,6 @@ instance unaryCtxt : FCtxt unaryJudgment Unary.Ctxt where
   empty := Unary.Ctxt.ø
   extend Gamma J := Unary.Ctxt.extend Gamma J
 
--- instance unaryTypeCheck : FTypeCheck unaryJudgment unaryCtxt where
-
-
 -- example type check
 -- typecheck a boxed natural number
 private def natCheck : Unary.TypeCheck
@@ -77,3 +74,35 @@ private def exampleCheck3 : Epistemic.TypeCheck
       )
       (Unary.TypeCheck.zeroI)
   )
+
+-- ·;· ⊢ letboxᵤ u = boxᵤ 1 in boxᵤ (plus u 2) : □ᵤℕ
+private def exampleCheck4 :
+  Epistemic.TypeCheck
+    ⟨Epistemic.Ctxt.ø, Epistemic.Ctxt.ø⟩
+    (Epistemic.Judgment.tytrue
+      (Epistemic.Expr.letbox "U" "u" --=
+        (Epistemic.Expr.box "U" (Epistemic.Expr.fexpr "U" (Unary.Expr.succ Unary.Expr.zero))) -- in
+        (Epistemic.Expr.box "U" (Epistemic.Expr.fexpr "U" (Unary.Expr.plus (Unary.Expr.var "u") (Unary.Expr.succ (Unary.Expr.succ Unary.Expr.zero)))))
+      )
+      (Epistemic.Proposition.Box "U" (Epistemic.Proposition.Ftype "U" Unary.Proposition.Nat))
+    )
+  :=
+    (
+      Epistemic.TypeCheck.boxE
+      -- Typecheck the box part
+      (
+        Epistemic.TypeCheck.boxI
+          (Epistemic.CtxtMap.empty)
+          (Unary.TypeCheck.succI Unary.TypeCheck.zeroI)
+      )
+      -- Typecheck the in part
+      (
+        Epistemic.TypeCheck.boxI
+          (Epistemic.CtxtMap.keep Epistemic.CtxtMap.empty)
+          (
+            Unary.TypeCheck.plus
+              (Unary.TypeCheck.hyp Unary.Lookup.here)
+              (Unary.TypeCheck.succI (Unary.TypeCheck.succI (Unary.TypeCheck.zeroI)))
+          )
+      )
+    )

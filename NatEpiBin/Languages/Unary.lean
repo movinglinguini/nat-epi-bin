@@ -11,6 +11,7 @@ inductive Expr : Type
   | var : String -> Expr
   | lam : String -> Expr -> Expr
   | app : Expr -> Expr -> Expr
+  | plus : Expr -> Expr -> Expr
   | zero : Expr
   | succ : Expr -> Expr
 
@@ -36,6 +37,10 @@ inductive TypeCheck : Ctxt -> Judgment -> Type
       TypeCheck Delta (Judgment.tytrue e1 (Proposition.Lam A B))
       -> TypeCheck Delta (Judgment.tytrue e2 A)
       -> TypeCheck Delta (Judgment.tytrue (Expr.app e1 e2) B)
+  | plus :
+    TypeCheck Delta (Judgment.tytrue n1 Proposition.Nat)
+    -> TypeCheck Delta (Judgment.tytrue n2 Proposition.Nat)
+    -> TypeCheck Delta (Judgment.tytrue (Expr.plus n1 n2) Proposition.Nat)
   | zeroI : TypeCheck Delta (Judgment.tytrue Expr.zero Proposition.Nat)
   | succI :
       TypeCheck Delta (Judgment.tytrue e Proposition.Nat)

@@ -97,3 +97,11 @@ inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 2
         (Expr.box k (Expr.fexpr k F))
         (Proposition.Box k (Proposition.Ftype k τ))
       )
+  | boxE :
+    TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue E1 (Proposition.Box k (Proposition.Ftype k τ)))
+    -> TypeCheck
+        ⟨Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) (Proposition.Ftype k τ)), Delta⟩
+        (Judgment.tytrue E2 C)
+    -> TypeCheck
+        ⟨Gamma, Delta⟩
+        (Judgment.tytrue (Expr.letbox k u E1 E2) C)
