@@ -23,6 +23,7 @@ private def natCheck : Unary.TypeCheck
   (Unary.Judgment.tytrue Unary.Expr.zero Unary.Proposition.Nat)
   := Unary.TypeCheck.zeroI
 
+-- ·;· ⊢ boxᵤ 0 : □ᵤℕ
 private def exampleTypeCheck1 : Epistemic.TypeCheck
   ⟨Epistemic.Ctxt.ø, Epistemic.Ctxt.ø⟩
   (Epistemic.Judgment.tytrue
@@ -35,6 +36,8 @@ private def exampleTypeCheck1 : Epistemic.TypeCheck
       (Unary.TypeCheck.zeroI)
   )
 
+-- u ::ᵤ ℕ ;· ⊢ boxᵤ 0 : □ᵤℕ
+-- Should have to keep u in the epistemic context since the target agent is U
 private def exampleCheck2 : Epistemic.TypeCheck
   ⟨Epistemic.Ctxt.extend
     Epistemic.Ctxt.ø
@@ -52,12 +55,14 @@ private def exampleCheck2 : Epistemic.TypeCheck
       (Unary.TypeCheck.zeroI)
   )
 
+-- u ::ₐ ℕ ;· ⊢ boxᵤ 0 : □ᵤℕ
+-- Should have to drop u from the epistemic context since the target agent is not U
 private def exampleCheck3 : Epistemic.TypeCheck
   ⟨Epistemic.Ctxt.extend
     Epistemic.Ctxt.ø
-    (Epistemic.Judgment.tyknows "B"
+    (Epistemic.Judgment.tyknows "A"
       (Epistemic.Expr.var "u")
-      (Epistemic.Proposition.Ftype "B" Unary.Proposition.Nat)),
+      (Epistemic.Proposition.Ftype "A" Unary.Proposition.Nat)),
    Epistemic.Ctxt.ø⟩
   (Epistemic.Judgment.tytrue
     (Epistemic.Expr.box "U" (Epistemic.Expr.fexpr "U" (Unary.Expr.zero)))
