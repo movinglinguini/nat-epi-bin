@@ -1,3 +1,6 @@
+/-
+  Language embedding describing a simple binary-number calculator language
+-/
 namespace Binary
 
 inductive Proposition : Type where
@@ -11,8 +14,10 @@ inductive Expr : Type where
   | bin : Expr
   | one : Expr -> Expr
   | zero : Expr -> Expr
+  -- left shift operator
+  | shiftl : Expr -> Expr
 
--- 01
+-- 01 - Read in reverse direction
 private def exampleBinaryNumber : Expr
  := Expr.one (Expr.zero Expr.bin)
 
@@ -49,3 +54,6 @@ inductive TypeCheck : Ctxt -> Judgment -> Type where
   | binOneInduct :
     TypeCheck Gamma (Judgment.tytrue B Proposition.Bin)
     -> TypeCheck Gamma (Judgment.tytrue (Expr.one B) Proposition.Bin)
+  | shiftl :
+    TypeCheck Gamma (Judgment.tytrue B Proposition.Bin)
+    -> TypeCheck Gamma (Judgment.tytrue (Expr.shiftl B) Proposition.Bin)

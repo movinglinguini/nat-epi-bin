@@ -8,6 +8,7 @@
 import NatEpiBin.Entities.Pair
 import NatEpiBin.Entities.FExpr
 import NatEpiBin.Entities.FType
+import NatEpiBin.Entities.TypeMap
 
 import NatEpiBin.Abstractions.FTypeCheck
 
@@ -33,6 +34,7 @@ inductive Expr : Type 1
   | box : Agent -> Expr -> Expr
   | letbox : Agent -> String -> Expr -> Expr -> Expr
   | fexpr {ForeignExpressions : Type} : Agent -> ForeignExpressions -> Expr
+  | tell : Agent -> String -> Expr -> Expr -> Expr
 
 inductive Judgment : Type 1
   | tytrue : Expr -> Proposition -> Judgment
@@ -62,19 +64,14 @@ inductive CtxtMap
     CtxtMap fc Gamma k Gamma' -> l ≠ k ->
     CtxtMap fc (Ctxt.extend Gamma (Judgment.tyknows l (Expr.var u) J)) k Gamma'
 
--- Class that captures the notion of type-mapping
-class TypeMap (A : Type 1) (B : Type) where
-  typeMap : A -> B -> Type
-
 -- Type-checking judgment
 inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 2
   | hyp :
       Lookup Delta (Judgment.tytrue (Expr.var x) A)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) A)
-  | hypstar { C : Proposition } { τ : B } [typeMap : TypeMap Proposition B] :
-      typeMap.typeMap C τ
-      -> Lookup Delta (Judgment.tyknows k (Expr.var x) (Proposition.Ftype k τ))
-      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.var x) C)
+  | hypstar  :
+      Lookup Gamma (Judgment.tyknows k (Expr.var x) C)
+      -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tyknows k (Expr.var x) C)
   | lambdaI :
       TypeCheck ⟨Gamma, Ctxt.extend Delta (Judgment.tytrue (Expr.var x) A)⟩ (Judgment.tytrue e B)
       -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.lambda x e) (Proposition.Lam A B))
@@ -105,3 +102,9 @@ inductive TypeCheck : (Pair Ctxt Ctxt) -> Judgment -> Type 2
     -> TypeCheck
         ⟨Gamma, Delta⟩
         (Judgment.tytrue (Expr.letbox k u E1 E2) C)
+  | tell {FType1 FType2 A B Gamma Delta l E1 k u E2 C}
+    { TypeMapProp : FType1 -> FType2 -> Type }:
+    TypeMapProp A B
+    -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tyknows l E1 (Proposition.Ftype l A))
+    -> TypeCheck ⟨Ctxt.extend Gamma (Judgment.tyknows k (Expr.var u) (Proposition.Ftype k B)), Delta⟩ (Judgment.tytrue E2 C)
+    -> TypeCheck ⟨Gamma, Delta⟩ (Judgment.tytrue (Expr.tell k u E1 E2) C)

@@ -1,8 +1,12 @@
+import NatEpiBin.Entities.TypeMap
+
 import NatEpiBin.Abstractions.FTypeCheck
 
 import NatEpiBin.Languages.Glue
 import NatEpiBin.Languages.Unary
+import NatEpiBin.Languages.Binary
 
+-- Unary type instances
 instance unaryExpr : FExpr Unary.Expr where
   var := Unary.Expr.var
 
@@ -12,6 +16,23 @@ instance unaryJudgment : FJudgment unaryExpr Unary.Proposition Unary.Judgment wh
 instance unaryCtxt : FCtxt unaryJudgment Unary.Ctxt where
   empty := Unary.Ctxt.ø
   extend Gamma J := Unary.Ctxt.extend Gamma J
+
+-- Binary type instances
+instance binaryExpr : FExpr Binary.Expr where
+  var := Binary.Expr.var
+
+instance binaryJudgment : FJudgment binaryExpr Binary.Proposition Binary.Judgment where
+  makeJudgment e A := Binary.Judgment.tytrue e A
+
+instance binaryCtxt : FCtxt binaryJudgment Binary.Ctxt where
+  empty := Binary.Ctxt.ø
+  extend Gamma J := Binary.Ctxt.extend Gamma J
+
+inductive NatToBinRel : Type where
+  | NtoB (u : Unary.Proposition) (b : Binary.Proposition) :
+    u = Unary.Proposition.Nat ->
+    b = Binary.Proposition.Bin ->
+    NatToBinRel
 
 -- example type check
 -- typecheck a boxed natural number
@@ -106,3 +127,18 @@ private def exampleCheck4 :
           )
       )
     )
+
+-- u ::ᵤ ℕ ; · ⊢ tellₐ w = u in boxₐ w : □ₐBin
+private def exampleCheck5 :
+  Epistemic.TypeCheck
+    ⟨Epistemic.Ctxt.extend
+    Epistemic.Ctxt.ø
+    (Epistemic.Judgment.tyknows "U"
+      (Epistemic.Expr.var "u")
+      (Epistemic.Proposition.Ftype "U" Unary.Proposition.Nat)),
+   Epistemic.Ctxt.ø⟩
+   (
+    Epistemic.Judgment.tytrue
+      (Epistemic.Expr.tell "B" "w" (Epistemic.Expr.var "u") (Epistemic.Expr.box "B" (Epistemic.Expr.fexpr "B" (Binary.Expr.var "w"))))
+      (Epistemic.Proposition.Box "B" (Epistemic.Proposition.Ftype "B" Binary.Proposition.Bin))
+   )

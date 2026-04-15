@@ -4,15 +4,6 @@ import NatEpiBin.Entities.FType
 class FJudgment (FEs : FExpr f) (τ : Type) (J : Type) where
   makeJudgment : f -> τ -> J
 
--- inductive FCtxt (Judgments : FJudgment FExprs FTypes FJudgments)
---   | ø : FCtxt Judgments
---   | extend { F : FExprs } { τ : FTypes } (Gamma : FCtxt Judgments) (J : FJudgments) : FCtxt Judgments
-
 class FCtxt (FJ : FJudgment Es Ts Js) (C : Type) where
   empty : C
   extend: C -> Js -> C
-
-class FTypeCheck (Judgments : FJudgment Es Ts Js) (FC : FCtxt Judgments Cs) (TypeCheckProp : Cs -> Js -> Type) where
-
--- class FTypeCheck { F : FExprs } { τ : FTypes } (Judgments : FJudgment FExprs FTypes FJudgments) (T : Type) where
---   typeCheck : FCtxt Judgments -> FJudgments -> T
